@@ -1,0 +1,32 @@
+name: Publish package to GitHub Packages
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'package version override (optional)'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v3
+      - name: change npm package scope
+        run: perl -i -pe 's/(^[ ]+"name":[ ]+")/\1\@${{ github.repository_owner }}\//g' package.json
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+          registry-url: 'https://npm.pkg.github.com'
+      - run: yarn
+      - run: yarn publish
+        if: ${{ !(github.event.inputs.version && github.event.inputs.version != '') }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: yarn publish --new-version ${{github.event.inputs.version}}
+        if: ${{ github.event.inputs.version && github.event.inputs.version != '' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
